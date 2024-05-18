@@ -3,13 +3,14 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.Callable;
 
-public class Elevator implements Callable<String> {
+public class Elevator implements Runnable {
     private int id;
     private int currentFloor;
     private ElevatorState state;
     private int destinationFloor;
     private int capacity;
     private int maxFloor;
+    private volatile boolean overflow;
     private HashSet<Integer> passengers;
 
     public Elevator(int id, int currentFloor, int capacity, int maxFloor) {
@@ -44,6 +45,7 @@ public class Elevator implements Callable<String> {
                 ids.add(request.getId());
                 passengers.remove(request.getId());
                 System.out.printf("Пассажир %d вышел из лифта %d на %d этаже\n", request.getId(), id, currentFloor);
+                Building.completedRequests++;
             }
         }
         for (var id : ids) {
@@ -52,10 +54,16 @@ public class Elevator implements Callable<String> {
     }
 
     public void getIn() {
+        if (overflow)
+            return;
         for (var request : Building.requests) {
             if (request.getStartFloor() == currentFloor) {
                 passengers.add(request.getId());
                 System.out.printf("Пассажир %d сел в лифт %d на %d этаже\n", request.getId(), id, currentFloor);
+                if (passengers.size() == capacity) {
+                    overflow = true;
+                    break;
+                }
             }
         }
     }
@@ -81,10 +89,15 @@ public class Elevator implements Callable<String> {
         System.out.println("Лифт " + id + " переместился на этаж " + currentFloor + ", пассажиры: " + passengers);
         }
 
+
     @Override
-    public String call() throws Exception {
-        while (currentFloor != destinationFloor)
-            move();
-        return "";
+    public void run() {
+        while (currentFloor != destinationFloor) {
+            try {
+                move();
+            } catch (InterruptedException e) {
+                System.out.println("Работа лифта " + id + " была прервана");
+            }
+        }
     }
 }

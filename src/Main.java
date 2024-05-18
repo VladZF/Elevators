@@ -13,6 +13,11 @@ public class Main {
         var maximum = scan.nextInt();
 
         Building building = new Building(capacity, delta, floors, maximum);
-        building.startSimulation();
+        try {
+            building.startSimulation();
+            System.out.println("Симуляция успешно завершена");
+        } catch (InterruptedException e) {
+            System.out.println("Работа симуляции была прервана");
+        }
     }
 }

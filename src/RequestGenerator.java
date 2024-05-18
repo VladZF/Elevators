@@ -1,7 +1,6 @@
 import java.util.Random;
-import java.util.concurrent.Callable;
 
-public class RequestGenerator implements Callable<String> {
+public class RequestGenerator implements Runnable {
 
     private final int delta, maxCount, maxFloor;
 
@@ -23,11 +22,14 @@ public class RequestGenerator implements Callable<String> {
     }
 
     @Override
-    public String call() throws InterruptedException {
-        for (int i = 1; i <= maxCount; i++) {
-            generateNewRequest(i, maxFloor);
-            Thread.sleep(delta * 1000L);
+    public void run() {
+        try {
+            for (int i = 1; i <= maxCount; i++) {
+                generateNewRequest(i, maxFloor);
+                Thread.sleep(delta * 1000L);
+            }
+        } catch (InterruptedException e) {
+            System.out.println("Генерация заявок была прервана");
         }
-        return "Генерация заявок успешна";
     }
 }

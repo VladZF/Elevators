@@ -1,4 +1,3 @@
-import java.util.Random;
 import java.util.concurrent.*;
 
 public class Building {
@@ -23,32 +22,39 @@ public class Building {
     }
 
     public void requestElevator() {
-        Request request = requests.peek();
+        Request request = requests.poll();
         if (request == null)
             return;
-        Elevator choosed;
+        Elevator chosen;
         if (firstElevator.getState() == ElevatorState.STOP
                 || request.getStartFloor() < firstElevator.getFloor() && firstElevator.getState() == ElevatorState.DOWN
                 || request.getStartFloor() > firstElevator.getFloor() && firstElevator.getState() == ElevatorState.UP) {
             firstElevator.setDestination(request.getFinishFloor());
-            choosed = firstElevator;
+            chosen = firstElevator;
         }
         else if (secondElevator.getState() == ElevatorState.STOP
                 || request.getStartFloor() < secondElevator.getFloor() && secondElevator.getState() == ElevatorState.DOWN
                 || request.getStartFloor() > secondElevator.getFloor() && secondElevator.getState() == ElevatorState.UP) {
             secondElevator.setDestination(request.getFinishFloor());
-            choosed = secondElevator;
-        } else { choosed = firstElevator; }
-        if (choosed.getDestinationFloor() > request.getStartFloor() && choosed.getState() == ElevatorState.DOWN
-            || choosed.getDestinationFloor() < request.getStartFloor() && choosed.getState() == ElevatorState.UP)
-            choosed.setDestination(request.getStartFloor());
-        System.out.printf("Пассажир %d вызвал лифт на этаже %d", request.getId(), request.getStartFloor());
-        elevatorsService.submit(choosed);
+            chosen = secondElevator;
+        } else { chosen = firstElevator; }
+        if (chosen.getDestinationFloor() > request.getStartFloor() && chosen.getState() == ElevatorState.DOWN
+            || chosen.getDestinationFloor() < request.getStartFloor() && chosen.getState() == ElevatorState.UP)
+            chosen.setDestination(request.getStartFloor());
+        System.out.printf("Пассажир %d вызвал лифт на этаже %d\n", request.getId(), request.getStartFloor());
+        elevatorsService.submit(chosen);
     }
 
 
 
-    public void startSimulation() {
-        Future<String> generationResult = requestService.submit(generator);
+    public void startSimulation() throws InterruptedException {
+        requestService.submit(generator);
+        while (completedRequests != maxRequestsCount) {
+            if (!requests.isEmpty())
+                requestElevator();
+            else {
+                Thread.sleep(500);
+            }
+        }
     }
 }
