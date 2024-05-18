@@ -23,26 +23,21 @@ public class Building {
         }
         else if (secondElevator.getState() == ElevatorState.STOP) {
             secondElevator.addRequest(request);
-            System.out.printf("Вызван второй лифт на этаж %d\n", request.getStartFloor());
         }
         else if (request.getStartFloor() < firstElevator.getFloor() && firstElevator.getState() == ElevatorState.DOWN
                 || request.getStartFloor() > firstElevator.getFloor() && firstElevator.getState() == ElevatorState.UP) {
-            System.out.printf("Вызван первый лифт на этаж %d\n", request.getStartFloor());
             firstElevator.addRequest(request);
         }
         else if (request.getStartFloor() < secondElevator.getFloor() && secondElevator.getState() == ElevatorState.DOWN
                 || request.getStartFloor() > secondElevator.getFloor() && secondElevator.getState() == ElevatorState.UP) {
-            System.out.printf("Вызван второй лифт на этаж %d\n", request.getStartFloor());
             secondElevator.addRequest(request);
         } else {
             int firstDistance = Math.abs(firstElevator.getCurrentRequest().getFinishFloor() - request.getStartFloor());
             int secondDistance = Math.abs(secondElevator.getCurrentRequest().getFinishFloor() - request.getStartFloor());
             if (firstDistance <= secondDistance) {
-                System.out.printf("Вызван первый лифт на этаж %d\n", request.getStartFloor());
                 firstElevator.addRequest(request);
                 return;
             }
-            System.out.printf("Вызван второй лифт на этаж %d\n", request.getStartFloor());
             secondElevator.addRequest(request);
         }
     }

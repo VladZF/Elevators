@@ -105,7 +105,7 @@ public class Elevator implements Runnable {
                     System.out.printf("Лифт %d отправился за пассажиром %s на этаж %d\n", id, currentRequest.getId(), currentRequest.getStartFloor());
                     state = currentRequest.getStartFloor() < currentFloor.intValue() ? ElevatorState.DOWN : ElevatorState.UP;
                     move(currentRequest.getStartFloor());
-                    System.out.printf("Пассажир %s подобран на этаже %d\n", currentRequest.getId(), currentRequest.getStartFloor());
+                    System.out.printf("Пассажир %s подобран лифтом %d на этаже %d\n", currentRequest.getId(), id, currentRequest.getStartFloor());
                     state = currentRequest.getDirection();
                     move(currentRequest.getFinishFloor());
                     System.out.printf("Пассажир %s доставлен на этаж %d\n", currentRequest.getId(), currentRequest.getFinishFloor());
