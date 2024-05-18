@@ -1,25 +1,22 @@
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Elevator implements Runnable {
-    private int id;
-    private int currentFloor;
-    private ElevatorState state;
-    private int destinationFloor;
-    private int capacity;
-    private int maxFloor;
-    private volatile boolean overflow;
-    private HashSet<Integer> passengers;
+    private final int id;
+    private final AtomicInteger currentFloor;
+    private volatile ElevatorState state;
+    private Request currentRequest;
+    private final ConcurrentLinkedDeque<Request> requests;
+    private final ConcurrentLinkedDeque<Request> passengers;
 
-    public Elevator(int id, int currentFloor, int capacity, int maxFloor) {
+    public Elevator(int id, int currentFloor, int maxFloor) {
         this.id = id;
-        this.currentFloor = currentFloor;
-        this.capacity = capacity;
-        this.maxFloor = maxFloor;
+        this.currentFloor = new AtomicInteger(currentFloor);
         this.state = ElevatorState.STOP;
-        passengers = new HashSet<>();
+        currentRequest = null;
+        requests = new ConcurrentLinkedDeque<>();
+        passengers = new ConcurrentLinkedDeque<>();
     }
 
     public ElevatorState getState() {
@@ -27,76 +24,94 @@ public class Elevator implements Runnable {
     }
 
     public int getFloor() {
-        return currentFloor;
+        return currentFloor.intValue();
     }
 
-    public void setDestination(int destination) {
-        destinationFloor = destination;
+    public int getId() {
+        return id;
     }
 
-    public int getDestinationFloor() {
-        return destinationFloor;
+
+    public synchronized void setCurrentRequest(Request request) {
+        currentRequest = request;
     }
 
-    public void getOut() {
-        var ids = new HashSet<Integer>();
-        for (var request : Building.requests) {
-            if (request.getFinishFloor() == currentFloor) {
-                ids.add(request.getId());
-                passengers.remove(request.getId());
-                System.out.printf("Пассажир %d вышел из лифта %d на %d этаже\n", request.getId(), id, currentFloor);
-                Building.completedRequests++;
-            }
-        }
-        for (var id : ids) {
-            Building.requests.removeIf(x -> x.getId() == id);
-        }
+    public Request getCurrentRequest() {
+        return currentRequest;
+    }
+
+    public void addRequest(Request request) {
+        requests.add(request);
     }
 
     public void getIn() {
-        if (overflow)
-            return;
-        for (var request : Building.requests) {
-            if (request.getStartFloor() == currentFloor) {
-                passengers.add(request.getId());
-                System.out.printf("Пассажир %d сел в лифт %d на %d этаже\n", request.getId(), id, currentFloor);
-                if (passengers.size() == capacity) {
-                    overflow = true;
-                    break;
-                }
+        var iterator = requests.iterator();
+        while (iterator.hasNext()) {
+            var request = iterator.next();
+            if (request.getStartFloor() == currentFloor.intValue()) {
+                System.out.printf("Пассажир %s сел в лифт %d на этаже %d\n", request.getId(), id, currentFloor.intValue());
+                passengers.add(request);
+                iterator.remove();
             }
         }
     }
 
-    public synchronized void move() throws InterruptedException {
-        if (currentFloor == destinationFloor && state != ElevatorState.STOP
-                || currentFloor == 1 && state == ElevatorState.DOWN
-                || currentFloor == maxFloor && state == ElevatorState.UP) {
+    public void getOut() {
+        var iterator = passengers.iterator();
+        while (iterator.hasNext()) {
+            var passenger = iterator.next();
+            if (passenger.getFinishFloor() == currentFloor.intValue()) {
+                System.out.printf("Пассажир %s вышел из лифта %d на этаже %d\n", passenger.getId(), id, currentFloor.intValue());
+                iterator.remove();
+            }
+        }
+    }
+
+    public synchronized void move(int floor) throws InterruptedException {
+        if (currentFloor.intValue() == floor
+                || currentFloor.intValue() == Building.maxFloor && state == ElevatorState.UP
+                || currentFloor.intValue() == 1 && state == ElevatorState.DOWN) {
             state = ElevatorState.STOP;
+            System.out.printf("Лифт %d [ОСТАНОВЛЕН]; ", id);
+            if (currentFloor.intValue() == currentRequest.getStartFloor()) {
+                passengers.add(currentRequest);
+            } else {
+                passengers.remove(currentRequest);
+            }
+            return;
         }
 
         getOut();
         getIn();
 
-        if (currentFloor != destinationFloor)
-            state = currentFloor < destinationFloor ? ElevatorState.UP : ElevatorState.DOWN;
-
-        Thread.sleep(1000);
-        switch (state) {
-            case UP -> currentFloor++;
-            case DOWN -> currentFloor--;
+        while (currentFloor.intValue() != floor) {
+            Thread.sleep(1000);
+            switch (state) {
+                case UP -> currentFloor.incrementAndGet();
+                case DOWN -> currentFloor.decrementAndGet();
+            }
+            System.out.printf("Лифт %d: этаж %d [%s]; Пассажиры: %d\n",
+                    id, currentFloor.intValue(), state == ElevatorState.UP ? "ВВЕРХ" : "ВНИЗ", passengers.size());
         }
-        System.out.println("Лифт " + id + " переместился на этаж " + currentFloor + ", пассажиры: " + passengers);
-        }
+    }
 
 
     @Override
     public void run() {
-        while (currentFloor != destinationFloor) {
-            try {
-                move();
-            } catch (InterruptedException e) {
-                System.out.println("Работа лифта " + id + " была прервана");
+        while (true){
+            while (!requests.isEmpty()) {
+                try {
+                    currentRequest = requests.poll();
+                    System.out.printf("Лифт %d отправился за пассажиром %s на этаж %d\n", id, currentRequest.getId(), currentRequest.getStartFloor());
+                    state = currentRequest.getStartFloor() < currentFloor.intValue() ? ElevatorState.DOWN : ElevatorState.UP;
+                    move(currentRequest.getStartFloor());
+                    System.out.printf("Пассажир %s подобран на этаже %d\n", currentRequest.getId(), currentRequest.getStartFloor());
+                    state = currentRequest.getDirection();
+                    move(currentRequest.getFinishFloor());
+                    System.out.printf("Пассажир %s доставлен на этаж %d\n", currentRequest.getId(), currentRequest.getFinishFloor());
+                } catch (InterruptedException e) {
+                    System.out.println("Работа лифта " + id + " была прервана");
+                }
             }
         }
     }

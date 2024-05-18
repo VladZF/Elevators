@@ -1,23 +1,16 @@
+import java.util.Locale;
 import java.util.Scanner;
+import java.util.concurrent.ExecutionException;
 
 public class Main {
-    public static void main(String[] args) {
-        Scanner scan = new Scanner(System.in);
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+        Scanner scan = new Scanner(System.in).useLocale(Locale.US);
         System.out.println("Введите количество этажей: ");
-        var floors = scan.nextInt();
-        System.out.println("Введите максимальную вместимость лифта (количество человек): ");
-        var capacity = scan.nextInt();
+        int floors = scan.nextInt();
         System.out.println("Введите частоту появления заявок (через сколько секунд появляется новая заявка): ");
-        var delta = scan.nextInt();
-        System.out.println("Введите максимальное количество заявок: ");
-        var maximum = scan.nextInt();
+        double delta = scan.nextDouble();
 
-        Building building = new Building(capacity, delta, floors, maximum);
-        try {
-            building.startSimulation();
-            System.out.println("Симуляция успешно завершена");
-        } catch (InterruptedException e) {
-            System.out.println("Работа симуляции была прервана");
-        }
+        Building building = new Building(delta, floors);
+        building.startSimulation();
     }
 }
