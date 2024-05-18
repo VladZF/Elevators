@@ -46,8 +46,8 @@ public class Building {
         int start = 0, end = 0;
         UUID id = UUID.randomUUID();
         while (start == end) {
-            start = random.nextInt(1, maxFloor);
-            end = random.nextInt(1, maxFloor);
+            start = random.nextInt(1, maxFloor + 1);
+            end = random.nextInt(1, maxFloor + 1);
         }
         return new Request(id, start, end);
     }

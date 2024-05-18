@@ -68,30 +68,23 @@ public class Elevator implements Runnable {
     }
 
     public synchronized void move(int floor) throws InterruptedException {
-        if (currentFloor.intValue() == floor
-                || currentFloor.intValue() == Building.maxFloor && state == ElevatorState.UP
-                || currentFloor.intValue() == 1 && state == ElevatorState.DOWN) {
-            state = ElevatorState.STOP;
-            System.out.printf("Лифт %d [ОСТАНОВЛЕН]; ", id);
-            if (currentFloor.intValue() == currentRequest.getStartFloor()) {
-                passengers.add(currentRequest);
-            } else {
-                passengers.remove(currentRequest);
-            }
-            return;
-        }
-
-        getOut();
-        getIn();
 
         while (currentFloor.intValue() != floor) {
-            Thread.sleep(2000);
-            switch (state) {
-                case UP -> currentFloor.incrementAndGet();
-                case DOWN -> currentFloor.decrementAndGet();
-            }
-            System.out.printf("Лифт %d: этаж %d [%s]; Пассажиры: %d\n",
-                    id, currentFloor.intValue(), state == ElevatorState.UP ? "ВВЕРХ" : "ВНИЗ", passengers.size());
+            getOut();
+            getIn();
+                Thread.sleep(2000);
+                switch (state) {
+                    case UP -> currentFloor.incrementAndGet();
+                    case DOWN -> currentFloor.decrementAndGet();
+                }
+                System.out.printf("Лифт %d: этаж %d; Пассажиры: %d\n",
+                        id, currentFloor.intValue(), passengers.size());
+        }
+        state = ElevatorState.STOP;
+        if (floor == currentRequest.getStartFloor()) {
+            passengers.add(currentRequest);
+        } else {
+            passengers.remove(currentRequest);
         }
     }
 
