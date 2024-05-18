@@ -19,7 +19,6 @@ public class Building {
     public void requestElevator(Request request) {
         if (firstElevator.getState() == ElevatorState.STOP) {
             firstElevator.addRequest(request);
-            System.out.printf("Вызван первый лифт на этаж %d\n", request.getStartFloor());
         }
         else if (secondElevator.getState() == ElevatorState.STOP) {
             secondElevator.addRequest(request);
